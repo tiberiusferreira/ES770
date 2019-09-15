@@ -9,3 +9,7 @@ edition = "2018"
 [dependencies]
 crossbeam-channel = "0.3"
 rppal = "0.11.3"
+ads1x1x = "*"
+nb = "*"
+linux-embedded-hal = "*"
+embedded-hal = "*"

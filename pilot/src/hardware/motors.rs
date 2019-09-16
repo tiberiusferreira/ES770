@@ -70,7 +70,7 @@ impl Motor for LeftMotor{
             true,
         ).unwrap();
         // Make sure the pin was exported
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(Duration::from_millis(500));
         Self{
             direction_pin_0,
             direction_pin_1,
@@ -120,7 +120,7 @@ impl Motor for RightMotor{
             true,
         ).unwrap();
         // Make sure the pin was exported
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(Duration::from_millis(500));
         Self{
             direction_pin_0,
             direction_pin_1,

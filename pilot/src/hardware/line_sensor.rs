@@ -31,7 +31,7 @@ impl LineSensor{
         adc2.set_data_rate(Sps860).unwrap();
         adc2.set_full_scale_range(FullScaleRange::Within4_096V).unwrap();
 
-        std::thread::sleep(Duration::from_millis(2000));
+        std::thread::sleep(Duration::from_millis(500));
         Self{
             adc,
             adc1: adc2
@@ -57,5 +57,40 @@ impl LineSensor{
         output_left_right[1] = ch2_2;
         output_left_right[0] = ch3_2;
         output_left_right
+    }
+
+    pub fn find_line(&mut self, reference_values: [i16; 8]) -> Vec<usize>{
+        // Algorithm get difference between sensor reading, calculate the % difference between them
+        // there should be at most 2 outliers
+        // an outlier should be at least 20% lower or higher than the others
+        let mut outliers = Vec::new();
+        let values = self.read_values();
+        let mut outliers_vec: Vec<(usize, f64)> = Vec::new();
+        for (pos, value) in values.iter().enumerate(){
+            let reference_value = reference_values.get(pos).unwrap();
+            if (value-reference_value).abs() > ((0.3*(*reference_value) as f64) as i16){
+                outliers.push(pos);
+                outliers_vec.push((pos, (value-*reference_value).abs() as f64/ (*reference_value) as f64));
+            }
+        }
+        let mut max_out: (usize, f64) = (0, 0.0);
+        for (outlier_pos, value) in outliers_vec{
+            if value > max_out.1{
+                max_out.1 = value;
+                max_out.0 = outlier_pos;
+            }
+        };
+
+//        if outliers.is_empty() || outliers.len()>1{
+//            println!("Ref: {:?}", reference_values);
+//            println!("Cal: {:?}", values);
+//            println!("Chose: {:?}", max_out.0);
+//        }
+
+
+        vec![max_out.0]
+
+
+
     }
 }

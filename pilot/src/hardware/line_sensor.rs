@@ -12,6 +12,13 @@ pub struct LineSensor{
     adc1: Ads1x1x<I2cInterface<I2cdev>, Ads1115, Resolution16Bit, ads1x1x::mode::OneShot>,
 }
 
+pub enum LinePosition{
+    LineToTheFarLeft,
+    LineToTheLeft,
+    LineInTheCenter,
+    LineToTheRight,
+    LineToTheFarRight,
+}
 
 impl LineSensor{
     pub fn new() -> Self{
@@ -59,20 +66,17 @@ impl LineSensor{
         output_left_right
     }
 
-    pub fn find_line(&mut self, reference_values: [i16; 8]) -> Vec<usize>{
-        // Algorithm get difference between sensor reading, calculate the % difference between them
-        // there should be at most 2 outliers
-        // an outlier should be at least 20% lower or higher than the others
-        let mut outliers = Vec::new();
+    pub fn find_line(&mut self, reference_values: [i16; 8]) -> Option<LinePosition>{
         let values = self.read_values();
         let mut outliers_vec: Vec<(usize, f64)> = Vec::new();
+        // Get all the outliers (more than 30% difference from reference value)
         for (pos, value) in values.iter().enumerate(){
             let reference_value = reference_values.get(pos).unwrap();
             if (value-reference_value).abs() > ((0.3*(*reference_value) as f64) as i16){
-                outliers.push(pos);
                 outliers_vec.push((pos, (value-*reference_value).abs() as f64/ (*reference_value) as f64));
             }
         }
+        // Get most "outlier" of the outliers
         let mut max_out: (usize, f64) = (0, 0.0);
         for (outlier_pos, value) in outliers_vec{
             if value > max_out.1{
@@ -81,16 +85,41 @@ impl LineSensor{
             }
         };
 
-//        if outliers.is_empty() || outliers.len()>1{
-//            println!("Ref: {:?}", reference_values);
-//            println!("Cal: {:?}", values);
-//            println!("Chose: {:?}", max_out.0);
-//        }
+        if max_out.1 == 0.0{
+            return None;
+        }
 
+        let line_position = match max_out.0{
+            0 => {
+                LinePosition::LineToTheFarLeft
+            },
+            1 => {
+                LinePosition::LineToTheFarLeft
+            },
+            2 => {
+                LinePosition::LineToTheLeft
+            },
+            3 => {
+                LinePosition::LineInTheCenter
+            },
+            4 => {
+                LinePosition::LineInTheCenter
+            },
+            5 => {
+                LinePosition::LineToTheRight
+            },
+            6 => {
+                LinePosition::LineToTheFarRight
+            },
+            7 => {
+                LinePosition::LineToTheFarRight
+            },
+            _ => {
+                println!("Error, invalid line position");
+                return None;
+            }
+        };
 
-        vec![max_out.0]
-
-
-
+        Some(line_position)
     }
 }

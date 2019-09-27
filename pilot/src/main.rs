@@ -1,4 +1,6 @@
 mod hardware;
+mod line_follower_controller;
+use line_follower_controller::*;
 use std::error::Error;
 use std::{thread, io};
 use std::time::{Duration, Instant};
@@ -6,7 +8,8 @@ use std::time::{Duration, Instant};
 use rppal::pwm::{Channel, Polarity, Pwm};
 use rppal::gpio::{Gpio, Trigger};
 use crossbeam_channel::{unbounded, Sender, Receiver};
-use crate::hardware::motors::{Motor, MotorDirection};
+use crate::hardware::motors::{Motor, Motors, MotorDirection};
+use hardware::line_sensor::LineSensor;
 use std::io::Write;
 
 enum Events{
@@ -24,26 +27,30 @@ extern crate linux_embedded_hal;
 extern crate nb;
 extern crate ads1x1x;
 
+const DEFAULT_MOTOR_POWER: f64 = 0.2;
+
+
+impl Default for MotorsConfig{
+    fn default() -> Self {
+        let default_motor_config = SingleMotorConfig { direction: MotorDirection::Forward, speed: DEFAULT_MOTOR_POWER };
+        MotorsConfig{
+            left_config: default_motor_config.clone(),
+            right_config: default_motor_config
+        }
+    }
+}
+
 
 
 fn main() -> Result<(), Box<dyn Error>> {
 
-    let mut right_motor = hardware::motors::RightMotor::new();
-    right_motor.set_direction(MotorDirection::Forward);
-    let mut left_motor = hardware::motors::LeftMotor::new();
-    left_motor.set_direction(MotorDirection::Forward);
-    right_motor.set_power_0_to_1(0.0);
-    left_motor.set_power_0_to_1(0.0);
-    std::thread::sleep(Duration::from_secs(2));
+    let mut motors = Motors::new();
 
-    use hardware::line_sensor::LineSensor;
+
     let mut line_sensor = LineSensor::new();
 
-//    loop{
-//        let outlier = line_sensor.read_values();
-//        println!("{:?}", outlier);
-//
-//    }
+
+
     let mut input = String::new();
     println!("Waiting for input to calibrate");
     io::stdin().read_line(&mut input).unwrap();
@@ -55,40 +62,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Began!");
 
 
-    let default_power = 0.3;
-    right_motor.set_power_0_to_1(default_power);
-    left_motor.set_power_0_to_1(default_power);
+    motors.change_power_both(DEFAULT_MOTOR_POWER);
+
+    let mut controller = line_follower_controller::SimpleLineFollowerController::new();
+
+    let mut slept = false;
     loop{
         let start = Instant::now();
-        let outliers = line_sensor.find_line(reference_values);
-//        println!("{:?}", outliers);
-        // 3 should be the closest to the middle
-        if outliers.len() == 1{
-            let outlier = outliers.get(0).unwrap();
-            let (delta_left, delta_right) = single_outlier_to_delta_motor_speed_0_to_1(*outlier);
-//            let old_right = right_motor.get_power_0_to_1();
-//            let old_left = left_motor.get_power_0_to_1();
-            let (left, right) = (((default_power + delta_left)*2.0).max(0.0).min(0.7), (default_power + delta_right).max(0.0).min(0.7));
-            right_motor.set_power_0_to_1(right);
-            left_motor.set_power_0_to_1(left);
-            println!("Motors: {} {}", left, right);
-//            println!("Delta {:?} // {:?}", delta_left, delta_right);
-//            println!("Final {:?} // {:?}", left, right);
-        }else if outliers.len() == 0{
-            right_motor.set_power_0_to_1(0.0);
-            left_motor.set_power_0_to_1(0.0);
-//            println!("No outliers, stopping!");
+        if let Some(outlier) =  line_sensor.find_line(reference_values){
+            let new_motor_config = controller.process_new_sensor_data(Some(outlier));
+            motors.apply_config(new_motor_config);
+            slept = false;
+        } else{
+            if slept == false{
+                std::thread::sleep(Duration::from_millis(350));
+                slept = true;
+            }else {
+                right_motor.set_power_0_to_1(0.0);
+                left_motor.set_power_0_to_1(0.0);
+            }
+            println!("No outliers for some time, stopping!");
         }
         println!("Took: {}ms", start.elapsed().as_millis());
     }
-
-
-//    right_motor.set_power_0_to_1(0.2);
-//    left_motor.set_power_0_to_1(0.2);
-
-
-
-
 
 //
 //    std::thread::sleep(Duration::from_millis(5000));
@@ -138,10 +134,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn single_outlier_to_delta_motor_speed_0_to_1(outlier: usize) -> (f64, f64){
+pub fn single_outlier_to_motor_power_0_to_1(outlier: usize) -> (f64, f64){
     // from 0 to 2, means we have to turn right
-    // from 4 to 7, means we have to turn left
-    let distance_from_center = (outlier as f64 - 3.0)*0.75;
+    // 3 or 4 we are OK
+    // from 5 to 7, means we have to turn left
+    let distance_from_center = ((outlier as f64 - 3.0)*1.0).min(0.3);
     // if is negative, we need to turn right
     // if is positive, we need to turn left
     let delta = distance_from_center/10.0;

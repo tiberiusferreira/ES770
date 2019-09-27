@@ -2,6 +2,54 @@ use rppal::gpio::{Gpio, Trigger, Pin, OutputPin};
 use rppal::pwm::{Pwm, Channel, Polarity};
 use std::time::Duration;
 
+#[derive(Debug, Clone)]
+pub struct Motors{
+    pub left_motor:  LeftMotor,
+    pub right_motor:  RightMotor,
+}
+
+impl Motors{
+    pub fn new() -> Self{
+        let mut right_motor = RightMotor::new();
+        right_motor.set_direction(MotorDirection::Forward);
+        let mut left_motor = LeftMotor::new();
+        left_motor.set_direction(MotorDirection::Forward);
+        right_motor.set_power_0_to_1(0.0);
+        left_motor.set_power_0_to_1(0.0);
+        Motors{
+            left_motor,
+            right_motor
+        }
+    }
+
+    pub fn apply_config(&mut self, config: MotorsConfig){
+        self.right_motor.set_direction(config.right_config.direction);
+        self.right_motor.set_power_0_to_1(config.right_config.power_0_to_1);
+
+        self.left_motor.set_direction(config.left_config.direction);
+        self.left_motor.set_power_0_to_1(config.left_config.power_0_to_1);
+    }
+
+    pub fn change_power_both(&mut self, power_0_1: f64){
+        self.right_motor.set_power_0_to_1(power_0_1);
+        self.left_motor.set_power_0_to_1(power_0_1);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MotorsConfig{
+    pub left_config:  SingleMotorConfig,
+    pub right_config:  SingleMotorConfig,
+}
+
+#[derive(Debug, Clone)]
+pub struct SingleMotorConfig{
+    pub direction: MotorDirection,
+    pub power_0_to_1: f64
+}
+
+
+
 pub enum MotorDirection{
     Forward,
     Backwards,

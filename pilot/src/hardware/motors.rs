@@ -2,7 +2,6 @@ use rppal::gpio::{Gpio, Trigger, Pin, OutputPin};
 use rppal::pwm::{Pwm, Channel, Polarity};
 use std::time::Duration;
 
-#[derive(Debug, Clone)]
 pub struct Motors{
     pub left_motor:  LeftMotor,
     pub right_motor:  RightMotor,
@@ -49,7 +48,7 @@ pub struct SingleMotorConfig{
 }
 
 
-
+#[derive(Debug, Clone)]
 pub enum MotorDirection{
     Forward,
     Backwards,
@@ -96,6 +95,7 @@ fn static_get_direction(direction_pin_0: &OutputPin, direction_pin_1: &OutputPin
         (true, true) => MotorDirection::Brake,
     }
 }
+
 
 pub struct LeftMotor{
     direction_pin_0: rppal::gpio::OutputPin,

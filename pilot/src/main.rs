@@ -11,11 +11,8 @@ use crossbeam_channel::{unbounded, Sender, Receiver};
 use crate::hardware::motors::{Motor, Motors, MotorDirection};
 use hardware::line_sensor::LineSensor;
 use std::io::Write;
+use line_follower_controller::*;
 
-enum Events{
-    LeftWheelTick,
-    RightWheelTick,
-}
 
 extern crate embedded_hal;
 use embedded_hal::adc::OneShot;
@@ -27,18 +24,7 @@ extern crate linux_embedded_hal;
 extern crate nb;
 extern crate ads1x1x;
 
-const DEFAULT_MOTOR_POWER: f64 = 0.2;
-
-
-impl Default for MotorsConfig{
-    fn default() -> Self {
-        let default_motor_config = SingleMotorConfig { direction: MotorDirection::Forward, speed: DEFAULT_MOTOR_POWER };
-        MotorsConfig{
-            left_config: default_motor_config.clone(),
-            right_config: default_motor_config
-        }
-    }
-}
+const DEFAULT_MOTOR_POWER: f64 = 0.3;
 
 
 
@@ -48,8 +34,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 
     let mut line_sensor = LineSensor::new();
-
-
 
     let mut input = String::new();
     println!("Waiting for input to calibrate");
@@ -65,8 +49,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     motors.change_power_both(DEFAULT_MOTOR_POWER);
 
     let mut controller = line_follower_controller::SimpleLineFollowerController::new();
-
+    let mut encoders = hardware::encoder::WheelEncoders::new();
     let mut slept = false;
+    encoders.start_listening_to_events();
+    motors.left_motor.set_power_0_to_1(0.4);
+    motors.right_motor.set_power_0_to_1(0.4);
+    loop{
+        println!("{:?}", encoders.get_speed_rpm());
+        std::thread::sleep(Duration::from_millis(100));
+    }
     loop{
         let start = Instant::now();
         if let Some(outlier) =  line_sensor.find_line(reference_values){
@@ -78,8 +69,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 std::thread::sleep(Duration::from_millis(350));
                 slept = true;
             }else {
-                right_motor.set_power_0_to_1(0.0);
-                left_motor.set_power_0_to_1(0.0);
+                motors.right_motor.set_power_0_to_1(0.0);
+                motors.left_motor.set_power_0_to_1(0.0);
             }
             println!("No outliers for some time, stopping!");
         }
@@ -102,7 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 //    let mut right_motor = hardware::motors::RightMotor::new();
 //    right_motor.set_direction(MotorDirection::Forward);
 //    right_motor.set_power_0_to_1(0.15);
-//
+// 20 e 21
 //    let gpio = Gpio::new().unwrap();
 //    let right_wheel = gpio.get(20).expect("Error opening pin 20");
 //    let mut right_wheel = right_wheel.into_input();

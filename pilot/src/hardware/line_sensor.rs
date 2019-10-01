@@ -12,12 +12,15 @@ pub struct LineSensor{
     adc1: Ads1x1x<I2cInterface<I2cdev>, Ads1115, Resolution16Bit, ads1x1x::mode::OneShot>,
 }
 
+#[derive(Clone)]
 pub enum LinePosition{
+    LineToTheFarFarLeft,
     LineToTheFarLeft,
     LineToTheLeft,
     LineInTheCenter,
     LineToTheRight,
     LineToTheFarRight,
+    LineToTheFarFarRight,
 }
 
 impl LineSensor{
@@ -66,6 +69,22 @@ impl LineSensor{
         output_left_right
     }
 
+    pub fn find_line2(&mut self, reference_values: [i16; 8]) -> i32{
+        let values = self.read_values();
+        let mut abs_diff_values: [i32; 8] = [0; 8];
+        for (pos, value) in values.iter().enumerate(){
+            abs_diff_values[pos] = (values[pos] - reference_values[pos]).abs().into();
+        }
+        let mut numerator = 0;
+        for (pos, value) in abs_diff_values.iter().enumerate(){
+            numerator = numerator + 1000*(pos as i32)*(*value);
+        }
+        let sum: i32 = abs_diff_values.iter().sum();
+        let res = numerator/sum;
+        res
+
+    }
+
     pub fn find_line(&mut self, reference_values: [i16; 8]) -> Option<LinePosition>{
         let values = self.read_values();
         let mut outliers_vec: Vec<(usize, f64)> = Vec::new();
@@ -91,7 +110,7 @@ impl LineSensor{
 
         let line_position = match max_out.0{
             0 => {
-                LinePosition::LineToTheFarLeft
+                LinePosition::LineToTheFarFarLeft
             },
             1 => {
                 LinePosition::LineToTheFarLeft
@@ -112,7 +131,7 @@ impl LineSensor{
                 LinePosition::LineToTheFarRight
             },
             7 => {
-                LinePosition::LineToTheFarRight
+                LinePosition::LineToTheFarFarRight
             },
             _ => {
                 println!("Error, invalid line position");

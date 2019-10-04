@@ -5,7 +5,7 @@ use crate::hardware::encoder::WheelTickData;
 
 pub trait LineFollowerController{
     fn new() -> Self;
-    fn process_new_sensor_data(&mut self, line_pos: i32, outlier: Option<LinePosition>, encoder_data: WheelTickData) -> MotorsConfig;
+    fn process_new_sensor_data(&mut self, line_pos: i32, outlier: Option<LinePosition>) -> MotorsConfig;
 }
 
 pub struct SimpleLineFollowerController{
@@ -35,7 +35,7 @@ impl LineFollowerController for SimpleLineFollowerController{
         }
     }
 
-    fn process_new_sensor_data(&mut self, line_pos: i32, maybe_outlier: Option<LinePosition>, encoder_data: WheelTickData) -> MotorsConfig {
+    fn process_new_sensor_data(&mut self, line_pos: i32, maybe_outlier: Option<LinePosition>) -> MotorsConfig {
 
 //        let default_speed = 40.0;
 //        if encoder_data.right_tps == 0.0{
@@ -45,8 +45,8 @@ impl LineFollowerController for SimpleLineFollowerController{
 //            self.acc_l = 0.0;
 //        }
 //
-        let default_power_l = 0.165*0.75; //*1.0;
-        let default_power_r = 0.14*0.75;//*1.0;
+        let default_power_l = 0.165*1.0; //*1.0;
+        let default_power_r = 0.14*1.0;//*1.0;
 //
 //        let center_conf =  MotorsConfig{
 //            left_config: SingleMotorConfig {
@@ -124,66 +124,45 @@ impl LineFollowerController for SimpleLineFollowerController{
 //                },
 //            }
             let err = (3500-line_pos) as f64;
-            let kp = 0.0000015*10.0; // * 7.0 works
-            let kd = 0.00001*10.0; // * 7.0 works
-            let output = kp*err + kd*(err-self.last_err as f64);
+            let kp = 0.000015*5.5; // * 7.0 works
+            let kd = 0.0001*4.0; // * 7.0 works
+            let mut output = kp*err + kd*(err-self.last_err as f64);
+
+//            output = output.min(0.3).max(-0.3);
 
 
-            println!("PL: {:1.3} PR: {:1.3}", default_power_l + output, default_power_r - output);
-            println!("PKp: {:1.3} Pkd: {:1.3}", kp*err + output, kd*(err-self.last_err as f64));
-            println!("Err-last_err: {}", err-self.last_err);
             self.last_err = err;
             (default_power_l - output,default_power_r + output)
 
         };
-//        else{
-//            println!("No outlier in controller!");
-//            (0.0, 0.0)
-////            self.acc_r =0.0;
-////            self.acc_l =0.0;
-////            return MotorsConfig{
-////                left_config: SingleMotorConfig {
-////                    direction: MotorDirection::Forward,
-////                    power_0_to_1: 0.0
-////                },
-////                right_config: SingleMotorConfig {
-////                    direction: MotorDirection::Forward,
-////                    power_0_to_1: 0.0
-////                }
-////            }
-//
-//        };
-        let elapsed_millis = match self.last_instant{
-            None => {
-                0.0
-            },
-            Some(last_instant) => {
-                last_instant.elapsed().as_millis() as f64
-            },
-        };
-//        let error_r = (goal_right - encoder_data.right_tps);
-//        self.acc_r = self.acc_r + self.ki_r*error_r*elapsed_millis;
-//        let output_r = self.kp_r *error_r + self.acc_r;
-//        let motor_power_r = output_r.max(0.0).min(1.0) + default_power_r;
-//
-//        let error_l = (goal_left - encoder_data.left_tps);
-//        self.acc_l = self.acc_l + self.ki_l *error_l*elapsed_millis;
-//        let output_l = self.kp_l *error_l + self.acc_l;
-//        let motor_power_l = output_l.max(0.0).min(1.0) + default_power_l;
-
-//        println!("Speed: {speed_left:3.1} EL: {:2.1} PL :{:1.2}             Speed: {speed_right:3.1} ER: {:2.1} PR :{:1.2}",error_l, motor_power_l, error_r, motor_power_r, speed_right=encoder_data.right_tps, speed_left=encoder_data.left_tps);
-//        println!("AL: {:1.2}                        AR :{:1.2}", self.acc_l, self.acc_r);
-        self.last_instant = Some(Instant::now());
-
-        MotorsConfig{
-            left_config: SingleMotorConfig {
+        let left_config;
+        let right_config;
+        if motor_power_l > 0.0{
+            left_config = SingleMotorConfig {
                 direction: MotorDirection::Forward,
                 power_0_to_1: motor_power_l
-            },
-            right_config: SingleMotorConfig {
+            };
+        }else{
+            left_config = SingleMotorConfig {
+                direction: MotorDirection::Backwards,
+                power_0_to_1: -motor_power_l
+            };
+        }
+
+        if motor_power_r > 0.0{
+            right_config = SingleMotorConfig {
                 direction: MotorDirection::Forward,
                 power_0_to_1: motor_power_r
-            }
+            };
+        }else{
+            right_config = SingleMotorConfig {
+                direction: MotorDirection::Backwards,
+                power_0_to_1: -motor_power_r
+            };
+        }
+        MotorsConfig{
+            left_config,
+            right_config
         }
     }
 }

@@ -10,6 +10,7 @@ edition = "2018"
 crossbeam-channel = "0.3"
 rppal = "0.11.3"
 ads1x1x = "*"
+#ads1x1x = {git = "https://github.com/dflemstr/ads1x15"}
 nb = "*"
 linux-embedded-hal = "*"
 embedded-hal = "*"

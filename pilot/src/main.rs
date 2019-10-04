@@ -27,7 +27,6 @@ extern crate ads1x1x;
 const DEFAULT_MOTOR_POWER: f64 = 0.0;
 
 
-
 fn main() -> Result<(), Box<dyn Error>> {
 
     let mut motors = Motors::new();
@@ -49,43 +48,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     motors.change_power_both(DEFAULT_MOTOR_POWER);
 
     let mut controller = line_follower_controller::SimpleLineFollowerController::new();
-    let mut encoders = hardware::encoder::WheelEncoders::new();
+//    let mut encoders = hardware::encoder::WheelEncoders::new();
     let mut slept = false;
-    encoders.start_listening_to_events();
-
-    loop{
-        println!("{}", line_sensor.find_line2(reference_values));
+//    encoders.start_listening_to_events();
+//    line_sensor.read_values2();
+    loop {
+        println!("{}", line_sensor.find_line(reference_values));
         let start = Instant::now();
-        let wheel_tick_data = encoders.get_speed_tps();
+//        let wheel_tick_data = encoders.get_speed_tps();
 //        let maybe_line = line_sensor.find_line(reference_values);
-        let line_as_i32 = line_sensor.find_line2(reference_values);
-        let new_conf = controller.process_new_sensor_data(line_as_i32, None, wheel_tick_data);
+        let line_as_i32 = line_sensor.find_line(reference_values);
+        let new_conf = controller.process_new_sensor_data(line_as_i32, None);
         motors.apply_config(new_conf);
         let elapsed = start.elapsed().as_millis();
-        println!("elapsed millis: {}", elapsed);
-        if  elapsed < 5{
-            println!("slept");
-            std::thread::sleep(Duration::from_millis((5-elapsed as u64)));
+        println!("elapsed {}", elapsed);
+        if elapsed < 20 {
+//            println!("slept for {}", 50 - elapsed as u64);
+            std::thread::sleep(Duration::from_millis((20 - elapsed as u64)));
         }
     }
-//    loop{
-//        let start = Instant::now();
-//        if let Some(outlier) =  line_sensor.find_line(reference_values){
-//            let new_motor_config = controller.process_new_sensor_data(Some(outlier), encoders.get_speed_tps());
-//            motors.apply_config(new_motor_config);
-//            slept = false;
-//        } else{
-//            if slept == false{
-//                std::thread::sleep(Duration::from_millis(350));
-//                slept = true;
-//            }else {
-//                motors.right_motor.set_power_0_to_1(0.0);
-//                motors.left_motor.set_power_0_to_1(0.0);
-//            }
-//            println!("No outliers for some time, stopping!");
-//        }
-//        println!("Took: {}ms", start.elapsed().as_millis());
-//    }
     Ok(())
 }
 

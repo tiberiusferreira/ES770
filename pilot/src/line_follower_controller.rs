@@ -15,7 +15,7 @@ pub struct SimpleLineFollowerController{
     kp_r: f64,
     ki_l: f64,
     ki_r: f64,
-    last_outlier: LinePosition,
+    last_outlier: u32,
     last_instant: Option<Instant>,
     last_err: f64
 }
@@ -29,7 +29,7 @@ impl LineFollowerController for SimpleLineFollowerController{
             kp_r: 1.0/(100.0),
             ki_l: 1.0/(250_000.0),
             ki_r: 1.0/(200_000.0),
-            last_outlier: LinePosition::LineInTheCenter,
+            last_outlier: 0,
             last_instant: None,
             last_err: 0.0
         }
@@ -45,8 +45,8 @@ impl LineFollowerController for SimpleLineFollowerController{
 //            self.acc_l = 0.0;
 //        }
 //
-        let default_power_l = 0.165*1.0; //*1.0;
-        let default_power_r = 0.14*1.0;//*1.0;
+        let default_power_l = 0.165*1.2; //*1.0;
+        let default_power_r = 0.14*1.2;//*1.0;
 //
 //        let center_conf =  MotorsConfig{
 //            left_config: SingleMotorConfig {
@@ -124,8 +124,8 @@ impl LineFollowerController for SimpleLineFollowerController{
 //                },
 //            }
             let err = (3500-line_pos) as f64;
-            let kp = 0.000015*5.5; // * 7.0 works
-            let kd = 0.0001*4.0; // * 7.0 works
+            let kp = 0.000015*5.0; // * 7.0 works
+            let kd = 0.0001*5.0; // * 7.0 works
             let mut output = kp*err + kd*(err-self.last_err as f64);
 
 //            output = output.min(0.3).max(-0.3);

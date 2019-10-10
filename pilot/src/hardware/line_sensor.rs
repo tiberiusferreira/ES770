@@ -10,7 +10,6 @@ use crate::embedded_hal::adc::OneShot;
 pub struct LineSensor{
     adc: Ads1x1x<I2cInterface<I2cdev>, Ads1115, Resolution16Bit, ads1x1x::mode::OneShot>,
     adc1: Ads1x1x<I2cInterface<I2cdev>, Ads1115, Resolution16Bit, ads1x1x::mode::OneShot>,
-    last_line_value: i32,
 }
 
 #[derive(Clone)]
@@ -46,7 +45,6 @@ impl LineSensor{
         Self{
             adc,
             adc1: adc2,
-            last_line_value: 0
         }
     }
 
@@ -91,13 +89,10 @@ impl LineSensor{
         output_left_right
     }
 
-    pub fn find_line(&mut self, reference_values: [i16; 8]) -> i32{
+    pub fn find_line(&mut self, reference_values: [i16; 8]) -> LineInfo{
         let values = self.read_values();
-        let has_outliers = self.has_outliers(values, reference_values);
-        if !has_outliers{
-            println!("No outliers!, using {}", self.last_line_value);
-            return self.last_line_value;
-        }
+        let outliers = self.get_outliers(values, reference_values);
+
         let mut abs_diff_values: [i32; 8] = [0; 8];
         for (pos, value) in values.iter().enumerate(){
             abs_diff_values[pos] = (values[pos] - reference_values[pos]).abs().into();
@@ -108,29 +103,41 @@ impl LineSensor{
         }
         let sum: i32 = abs_diff_values.iter().sum();
         let res = numerator/sum;
-        self.last_line_value = res;
-        res
+        LineInfo{
+            position: res,
+            outliers
+        }
 
     }
 
-    pub fn has_outliers(&mut self, values: [i16; 8], reference_values: [i16; 8]) -> bool{
-        let mut outliers_vec: Vec<(usize, f64)> = Vec::new();
-        // Get all the outliers (more than 30% difference from reference value)
+    pub fn get_outliers(&mut self, values: [i16; 8], reference_values: [i16; 8]) -> Vec<Outlier>{
+        let mut outliers_vec: Vec<Outlier> = Vec::with_capacity(8);
+        // Get all the outliers (more than 35% difference from reference value)
         for (pos, value) in values.iter().enumerate(){
             let reference_value = reference_values.get(pos).unwrap();
-            if (value-reference_value).abs() > ((0.4*(*reference_value) as f64) as i16){
-                outliers_vec.push((pos, (value-*reference_value).abs() as f64/ (*reference_value) as f64));
+            if (value-reference_value).abs() > ((0.35*(*reference_value) as f64) as i16){
+                let diff = (100*(value-*reference_value).abs() as u32/ (*reference_value) as u32) as u8;
+                println!("diff: {}", diff);
+                outliers_vec.push(Outlier{
+                    position: pos as u8,
+                    difference_from_reference_percentage: diff
+                });
             }
         }
-        // Get most "outlier" of the outliers
-        let mut max_out: (usize, f64) = (0, 0.0);
-//        for (outlier_pos, value) in outliers_vec{
-//            if value > max_out.1{
-//                max_out.1 = value;
-//                max_out.0 = outlier_pos;
-//            }
-//        };
-        return !outliers_vec.is_empty();
+
+        return outliers_vec;
 
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Outlier{
+    position: u8,
+    difference_from_reference_percentage: u8
+}
+
+#[derive(Debug, Clone)]
+pub struct LineInfo{
+    pub position: i32,
+    pub outliers: Vec<Outlier>
 }

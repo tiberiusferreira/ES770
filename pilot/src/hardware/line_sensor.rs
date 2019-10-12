@@ -1,5 +1,5 @@
-use ads1x1x::{FullScaleRange, ModeChangeError, Ads1x1x, interface::I2cInterface, channel};
-use ads1x1x::DataRate16Bit::{Sps860, Sps128};
+use ads1x1x::{FullScaleRange, Ads1x1x, interface::I2cInterface, channel};
+use ads1x1x::DataRate16Bit::{Sps860};
 use std::time::{Duration, Instant};
 use linux_embedded_hal::i2cdev::core::I2CDevice;
 use ads1x1x::ic::Resolution16Bit;
@@ -12,21 +12,11 @@ pub struct LineSensor{
     adc1: Ads1x1x<I2cInterface<I2cdev>, Ads1115, Resolution16Bit, ads1x1x::mode::OneShot>,
 }
 
-#[derive(Clone)]
-pub enum LinePosition{
-    LineToTheFarFarLeft,
-    LineToTheFarLeft,
-    LineToTheLeft,
-    LineInTheCenter,
-    LineToTheRight,
-    LineToTheFarRight,
-    LineToTheFarFarRight,
-}
 
 impl LineSensor{
     pub fn new() -> Self{
 
-        use ads1x1x::{channel, Ads1x1x, SlaveAddr};
+        use ads1x1x::{Ads1x1x, SlaveAddr};
         use linux_embedded_hal::I2cdev;
 
         let dev = I2cdev::new("/dev/i2c-1").unwrap();
@@ -95,7 +85,7 @@ impl LineSensor{
 
         let mut abs_diff_values: [i32; 8] = [0; 8];
         for (pos, value) in values.iter().enumerate(){
-            abs_diff_values[pos] = (values[pos] - reference_values[pos]).abs().into();
+            abs_diff_values[pos] = (value - reference_values[pos]).abs().into();
         }
         let mut numerator = 0;
         for (pos, value) in abs_diff_values.iter().enumerate(){
@@ -117,7 +107,6 @@ impl LineSensor{
             let reference_value = reference_values.get(pos).unwrap();
             if (value-reference_value).abs() > ((0.35*(*reference_value) as f64) as i16){
                 let diff = (100*(value-*reference_value).abs() as u32/ (*reference_value) as u32) as u8;
-                println!("diff: {}", diff);
                 outliers_vec.push(Outlier{
                     position: pos as u8,
                     difference_from_reference_percentage: diff

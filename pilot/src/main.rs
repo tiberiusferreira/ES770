@@ -37,17 +37,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Waiting for input to calibrate");
     io::stdin().read_line(&mut input).unwrap();
     let reference_values = line_sensor.read_values();
-//    loop{
-//        let line_info = line_sensor.find_line(reference_values);
-//        println!("{:?}", line_info.position);
-//
-//    }
     println!("Calibration done with {:?}", reference_values);
-//    loop {
-//        let reference_values = line_sensor.read_values();
-//
-//        println!("Calibration done with {:?}", reference_values);
-//    }
     println!("Waiting for input to begin");
     io::stdin().read_line(&mut input).unwrap();
     println!("Began!");
@@ -55,24 +45,33 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 
     let mut controller = line_follower_controller::SimpleLineFollowerController::new();
-    //let mut encoders = hardware::encoder::WheelEncoders::new();
-    let mut slept = false;
-    //encoders.start_listening_to_events();
-    //let wheel_tick_data = encoders.get_speed_tps();
+//    let mut encoders = hardware::encoder::WheelEncoders::new();
+//    encoders.start_listening_to_events();
     loop {
-//        println!("{:?}", line_sensor.find_line(reference_values));
         let start = Instant::now();
 
         let line_info = line_sensor.find_line(reference_values);
         let new_conf = controller.process_new_sensor_data(line_info);
         motors.apply_config(new_conf);
-        let elapsed = start.elapsed().as_millis();
-        println!("elapsed {}", elapsed);
-        if elapsed < 15 {
-            std::thread::sleep(Duration::from_millis((15 - elapsed as u64)));
+        let elapsed = start.elapsed().as_millis() as u64;
+//        println!("elapsed {}", elapsed);
+        let cycle_period_ms = 18;
+        if elapsed < cycle_period_ms {
+            std::thread::sleep(Duration::from_millis((cycle_period_ms - elapsed as u64)));
         }
+
+
+//        let wheel_tick_data = encoders.get_speed_tps();
+//        let left_revs_per_sec = wheel_tick_data.left_tps/20.0;
+//        let radius = 6.25/2.0;
+//        let cm_per_sec_left = left_revs_per_sec*2.0*3.14*radius;
+//        let right_revs_per_sec = wheel_tick_data.right_tps/20.0;
+//        let cm_per_sec_right = right_revs_per_sec*2.0*3.14*radius;
+//        println!("LTicks: {:3.2} Left cm/s: {:3.2}     RTicks: {:3.2} Right cm/s: {:3.2} ", wheel_tick_data.left_tps, cm_per_sec_left, wheel_tick_data.right_tps,  cm_per_sec_right);
+
+
     }
-    Ok(())
+//    Ok(())
 }
 
 

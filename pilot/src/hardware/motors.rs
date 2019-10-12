@@ -1,4 +1,4 @@
-use rppal::gpio::{Gpio, Trigger, Pin, OutputPin};
+use rppal::gpio::{Gpio, OutputPin};
 use rppal::pwm::{Pwm, Channel, Polarity};
 use std::time::Duration;
 
@@ -29,10 +29,6 @@ impl Motors{
         self.left_motor.set_power_0_to_1(config.left_config.power_0_to_1);
     }
 
-    pub fn change_power_both(&mut self, power_0_1: f64){
-        self.right_motor.set_power_0_to_1(power_0_1);
-        self.left_motor.set_power_0_to_1(power_0_1);
-    }
 }
 
 #[derive(Debug, Clone)]

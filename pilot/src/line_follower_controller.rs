@@ -1,6 +1,6 @@
 use super::*;
 use hardware::motors::{MotorsConfig, SingleMotorConfig};
-use crate::hardware::line_sensor::{LinePosition, LineInfo};
+use crate::hardware::line_sensor::{LineInfo};
 use crate::hardware::encoder::WheelTickData;
 
 pub trait LineFollowerController{
@@ -9,12 +9,11 @@ pub trait LineFollowerController{
 }
 
 pub struct SimpleLineFollowerController{
-    acc_r: f64,
-    acc_l: f64,
-    kp_l: f64,
-    kp_r: f64,
-    ki_l: f64,
-    ki_r: f64,
+    kp: f64,
+    kd: f64,
+    default_power_l: f64,
+    default_power_r: f64,
+    line_goal: i32,
     last_line_pos: i32,
     last_instant: Instant,
     last_time_had_new_line_pos: Instant,
@@ -24,12 +23,11 @@ pub struct SimpleLineFollowerController{
 impl LineFollowerController for SimpleLineFollowerController{
     fn new() -> Self{
         SimpleLineFollowerController{
-            acc_r: 0.0,
-            acc_l: 0.0,
-            kp_l: 1.0/(100.0),
-            kp_r: 1.0/(100.0),
-            ki_l: 1.0/(250_000.0),
-            ki_r: 1.0/(200_000.0),
+            kp: 0.000015*3.0,
+            kd: 0.0001*7.5,
+            default_power_l: 0.165*1.0,
+            default_power_r: 0.14*1.0,
+            line_goal: 3100, //goes from 0 to 7000, but is not mounted dead center
             last_line_pos: 0,
             last_instant: Instant::now(),
             last_time_had_new_line_pos: Instant::now(),
@@ -58,18 +56,14 @@ impl LineFollowerController for SimpleLineFollowerController{
         }else{
             self.last_time_had_new_line_pos = Instant::now();
         }
-        let default_power_l = 0.165*4.5; //*1.0;
-        let default_power_r = 0.14*4.5;//*1.0;
 
         let (motor_power_l, motor_power_r): (f64, f64) = {
 
-            let err = (3100- line_info.position) as f64;
-            let kp = 0.000015*5.0; // * 7.0 works
-            let kd = 0.0001*9.0; // * 7.0 works
-            let mut output = kp*err + kd*(err-self.last_err as f64);
+            let err = (self.line_goal- line_info.position) as f64;
+            let output = self.kp*err + self.kd*(err-self.last_err as f64);
 
             self.last_err = err;
-            (default_power_l - output,default_power_r + output)
+            (self.default_power_l - output,self.default_power_r + output)
 
         };
         let left_config;

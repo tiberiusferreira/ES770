@@ -105,7 +105,7 @@ impl LineSensor{
         // Get all the outliers (more than 35% difference from reference value)
         for (pos, value) in values.iter().enumerate(){
             let reference_value = reference_values.get(pos).unwrap();
-            if (value-reference_value).abs() > ((0.35*(*reference_value) as f64) as i16){
+            if (value-reference_value).abs() > ((0.3*(*reference_value) as f64) as i16){
                 let diff = (100*(value-*reference_value).abs() as u32/ (*reference_value) as u32) as u8;
                 outliers_vec.push(Outlier{
                     position: pos as u8,

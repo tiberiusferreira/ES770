@@ -62,11 +62,11 @@ impl SimpleLineFollowerController{
             return MotorsConfig{
                 left_config: SingleMotorConfig {
                     direction: MotorDirection::Backwards,
-                    power_0_to_1: 0.5
+                    power_0_to_1: 0.8
                 },
                 right_config: SingleMotorConfig {
                     direction: MotorDirection::Backwards,
-                    power_0_to_1: 0.5
+                    power_0_to_1: 0.8
                 }
             }
         }else{
@@ -87,11 +87,11 @@ impl SimpleLineFollowerController{
         return MotorsConfig {
             left_config: SingleMotorConfig {
                 direction: MotorDirection::Forward,
-                power_0_to_1: self.default_power_l
+                power_0_to_1: self.default_power_l + 0.5
             },
             right_config: SingleMotorConfig {
                 direction: MotorDirection::Forward,
-                power_0_to_1: self.default_power_r
+                power_0_to_1: self.default_power_r + 0.5
             }
         }
     }
@@ -159,9 +159,9 @@ impl LineFollowerController for SimpleLineFollowerController{
     fn new() -> Self{
         SimpleLineFollowerController{
             kp: 0.000015*6.5,
-            kd: 0.0001*12.0,
-            default_power_l: 0.165*1.4,
-            default_power_r: 0.14*1.4,
+            kd: 0.0001*19.0, //12
+            default_power_l: 0.165*1.8, // 1.4
+            default_power_r: 0.16*1.8, // 1.4
             line_goal: 3100, //goes from 0 to 7000, but is not mounted dead center
             last_line_pos: 0,
             last_instant: Instant::now(),
@@ -172,7 +172,7 @@ impl LineFollowerController for SimpleLineFollowerController{
             last_err: 0.0,
             times_passed_end_line: 0,
             consecutive_times_maybe_saw_end_line: 0,
-            number_times_needs_see_end_line_to_declare_actual_end_line: 4,
+            number_times_needs_see_end_line_to_declare_actual_end_line: 3,
             stopped: false
         }
     }
@@ -180,12 +180,13 @@ impl LineFollowerController for SimpleLineFollowerController{
 
 
     fn process_new_sensor_data(&mut self, mut line_info: LineInfo) -> MotorsConfig {
-
-        let mut diffs = Vec::new();
-        for outlier in line_info.outliers.clone(){
-            diffs.push(outlier.difference_from_reference_percentage);
-        }
-        println!("{:?}", diffs);
+//        let mut diffs = Vec::new();
+//        for outlier in line_info.outliers.clone(){
+//            diffs.push(outlier.difference_from_reference_percentage);
+//        }
+//        println!("{:?}", diffs);
+//
+//        println!("{:?}", line_info.outliers.len());
 
         if self.processed_end_line(&line_info){
             return self.go_straight_motor_conf();
@@ -200,14 +201,15 @@ impl LineFollowerController for SimpleLineFollowerController{
             return self.stop_routine();
         }
 
-        if line_info.outliers.len() > 4{
-            println!("More than 4 outliers, going straight");
+        if line_info.outliers.len() > 3{
+
+//            println!("More than 3 outliers: {:?}, going straight", line_info.outliers.len());
             return self.go_straight_motor_conf();
         }
 
 
         if line_info.outliers.is_empty(){
-            println!("Using old line pos");
+//            println!("Using old line pos");
             line_info.position = self.last_line_pos;
         }else{
             self.last_time_had_new_line_pos = Instant::now();

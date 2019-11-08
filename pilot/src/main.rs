@@ -54,8 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let new_conf = controller.process_new_sensor_data(line_info);
         motors.apply_config(new_conf);
         let elapsed = start.elapsed().as_millis() as u64;
-//        println!("elapsed {}", elapsed);
-        let cycle_period_ms = 18;
+        let cycle_period_ms = 13;
         if elapsed < cycle_period_ms {
             std::thread::sleep(Duration::from_millis((cycle_period_ms - elapsed as u64)));
         }

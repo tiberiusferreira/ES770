@@ -121,8 +121,8 @@ impl LineSensor{
 
 #[derive(Debug, Clone)]
 pub struct Outlier{
-    position: u8,
-    difference_from_reference_percentage: u8
+    pub position: u8,
+    pub difference_from_reference_percentage: u8
 }
 
 #[derive(Debug, Clone)]
